@@ -1,37 +1,40 @@
-#include <stdexcept>
-#include <iostream>
 #include "byte_stream.hh"
+#include <iostream>
+#include <stdexcept>
 
 using namespace std;
 
-ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), 
-    closed_( false ), error_( false ), total_pushed_(0), total_popped_(0), available_capacity_(capacity_) { }
+/* ByteStream: */
 
-void Writer::push(std::string_view data )
+ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), available_capacity_( capacity_ ) {}
+
+/* Writer: */
+
+void Writer::push( std::string &data )
 {
+  // 空数据
+  if ( data.empty() )
+    return;
+
   // 已关闭
-  if (closed_)
-  {
+  if ( closed_ ) {
     const string error = "The byteStream is closed!";
-    set_error(error);
+    set_error( error );
   }
   // 已经出错
-  else if (error_)
-  {
+  else if ( has_error_ ) {
     const string error = "The byteStream had an error!";
-    set_error(error);
+    set_error( error );
   }
   // 超出可写入容量，不能写入
-  else if ( data.size() > available_capacity() )
-  {
+  else if ( data.size() > available_capacity() ) {
     const string error = "No enough capacity to write!";
-    set_error(error);
+    set_error( error );
   }
   // 写入
-  else
-  {
-    for (char byte : data)
-      pipe_.push(byte);
+  else {
+    for ( char byte : data )
+      pipe_.push( byte );
     total_pushed_ += data.size();
     available_capacity_ -= data.size();
   }
@@ -40,13 +43,18 @@ void Writer::push(std::string_view data )
 void Writer::close()
 {
   // check all data popped.
+  if ( total_popped_ != total_pushed_ ) {
+    const string msg = "There is some data unpopped!";
+    std::cerr << msg << std::endl;
+  }
+  std::cout << "The pipe is closed!" << std::endl;
   closed_ = true;
 }
 
-void Writer::set_error(std::string_view err)
+void Writer::set_error( std::string_view err )
 {
   std::cerr << err << std::endl;
-  error_ = true;
+  has_error_ = true;
 }
 
 bool Writer::is_closed() const
@@ -68,8 +76,10 @@ string_view Reader::peek() const
 {
   // string_view next_byte = pipe_.pop();
 
-  return 
+  return
 }
+
+/* Reader : */
 
 bool Reader::is_finished() const
 {
@@ -79,7 +89,7 @@ bool Reader::is_finished() const
 
 bool Reader::has_error() const
 {
-  return error_;
+  return has_error_;
 }
 
 void Reader::pop( uint64_t len )
