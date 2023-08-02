@@ -10,33 +10,41 @@ ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), available_c
 
 /* Writer: */
 
-void Writer::push( std::string &data )
+void Writer::push( string data )
 {
   // 空数据
-  if ( data.empty() )
+  if ( data.empty() ) {
     return;
-
+  }
   // 已关闭
-  if ( closed_ ) {
-    const string error = "The byteStream is closed!";
-    set_error( error );
+  else if ( closed_ ) {
+    cerr << "The byteStream is closed!" << endl;
+    return;
   }
   // 已经出错
   else if ( has_error_ ) {
-    const string error = "The byteStream had an error!";
-    set_error( error );
+    cerr << "The byteStream had an error!" << endl;
+    return;
   }
-  // 超出可写入容量，不能写入
-  else if ( data.size() > available_capacity() ) {
-    const string error = "No enough capacity to write!";
-    set_error( error );
+  // 没有容量
+  else if ( available_capacity() == 0 ) {
+    cerr << "No enough capacity to write!" << endl;
+    return;
   }
   // 写入
   else {
-    for ( char byte : data )
-      pipe_.push( byte );
-    total_pushed_ += data.size();
-    available_capacity_ -= data.size();
+    const uint64_t len = data.size();
+    const uint64_t write_len = len < available_capacity() ? len : available_capacity();
+    if ( write_len < len ) {
+      data = data.substr( 0, write_len );
+      string err_msg = "No enough capacity, Write data : ";
+      ( err_msg += to_string( write_len ) += '/' ) += to_string( len );
+      cerr << err_msg << endl;
+    }
+    pipe_string_.push_back( std::move( data ) );
+    pipe_view_.emplace_back( pipe_string_.back() );
+    total_pushed_ += write_len;
+    available_capacity_ -= write_len;
   }
 }
 
@@ -51,9 +59,8 @@ void Writer::close()
   closed_ = true;
 }
 
-void Writer::set_error( std::string_view err )
+void Writer::set_error()
 {
-  std::cerr << err << std::endl;
   has_error_ = true;
 }
 
@@ -74,17 +81,17 @@ uint64_t Writer::bytes_pushed() const
 
 string_view Reader::peek() const
 {
-  // string_view next_byte = pipe_.pop();
-
-  return
+  if ( pipe_view_.empty() ) {
+    return {};
+  }
+  return pipe_view_.front();
 }
 
 /* Reader : */
 
 bool Reader::is_finished() const
 {
-  // Your code here.
-  return {};
+  return closed_ && !bytes_buffered();
 }
 
 bool Reader::has_error() const
@@ -94,18 +101,37 @@ bool Reader::has_error() const
 
 void Reader::pop( uint64_t len )
 {
-  // Your code here.
-  (void)len;
+
+  const uint64_t left = bytes_buffered();
+  uint64_t pop_len = len < left ? len : left;
+
+  // 不足量
+  if ( len > left )
+    cerr << "Will pop " << pop_len << "/" << len << "bytes!" << endl;
+  // 读数据
+  while ( pop_len > 0 ) {
+    uint64_t cur_pop_len = pipe_view_.front().length();
+    if ( pop_len >= cur_pop_len ) {
+      // pop当前view
+      pipe_view_.pop_front();
+      pipe_string_.pop_front();
+      pop_len -= cur_pop_len;
+    } else {
+      cur_pop_len = pop_len;
+      pipe_view_.front().remove_prefix( pop_len );
+      pop_len = 0;
+    }
+    total_popped_ += cur_pop_len;
+    available_capacity_ += cur_pop_len;
+  }
 }
 
 uint64_t Reader::bytes_buffered() const
 {
-  // Your code here.
-  return {};
+  return total_pushed_ - total_popped_;
 }
 
 uint64_t Reader::bytes_popped() const
 {
-  // Your code here.
-  return {};
+  return total_popped_;
 }

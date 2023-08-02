@@ -20,7 +20,9 @@ protected:
   bool closed_ = false;
   bool has_error_ = false;
 
-  std::queue<char> pipe_;
+  std::string err_msg_ = {};
+  std::deque<std::string> pipe_string_= {};
+  std::deque<std::string_view> pipe_view_= {};
 
 public:
   explicit ByteStream( uint64_t capacity );
@@ -35,10 +37,10 @@ public:
 class Writer : public ByteStream
 {
 public:
-  void push( std::string_view data ); // Push data to stream, but only as much as available capacity allows.
+  void push( std::string data ); // Push data to stream, but only as much as available capacity allows.
 
   void close(); // Signal that the stream has reached its ending. Nothing more will be written.
-  void set_error( std::string_view err ); // Signal that the stream suffered an error.
+  void set_error(); // Signal that the stream suffered an error.
 
   bool is_closed() const;              // Has the stream been closed?
   uint64_t available_capacity() const; // How many bytes can be pushed to the stream right now?
