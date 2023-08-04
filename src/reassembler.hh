@@ -3,6 +3,18 @@
 #include "byte_stream.hh"
 
 #include <string>
+#include <unordered_set>
+#include <unordered_map>
+
+struct Strobj
+{
+  uint64_t first_index = -1;
+  std::string data = "";
+  bool is_last_substring = false;
+  Strobj() = default;
+  Strobj(uint64_t index, std::string &&content, bool is_last);
+  Strobj(Strobj &&strobj);
+};
 
 class Reassembler
 {
@@ -31,4 +43,13 @@ public:
 
   // How many bytes are stored in the Reassembler itself?
   uint64_t bytes_pending() const;
+
+private:
+  std::unordered_map<uint64_t, Strobj> saved_strojb = { };
+
+  const uint64_t TCP_MTU = 1460;
+  uint64_t total_bytes_pending = 0;
+  uint64_t next_need_index = -1;
+
+  bool toSend(Strobj &bytes, Writer &output);
 };
