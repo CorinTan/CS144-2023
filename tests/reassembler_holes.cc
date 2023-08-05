@@ -10,7 +10,7 @@ int main()
   try {
     {
       ReassemblerTestHarness test { "holes 1", 65000 };
-
+      cout << "holes 1" << endl;
       test.execute( Insert { "b", 1 } );
 
       test.execute( BytesPushed( 0 ) );
@@ -20,7 +20,7 @@ int main()
 
     {
       ReassemblerTestHarness test { "holes 2", 65000 };
-
+      cout << "holes 2" << endl;
       test.execute( Insert { "b", 1 } );
       test.execute( Insert { "a", 0 } );
 
@@ -31,7 +31,7 @@ int main()
 
     {
       ReassemblerTestHarness test { "holes 3", 65000 };
-
+      cout << "holes 3" << endl;
       test.execute( Insert { "b", 1 }.is_last() );
 
       test.execute( BytesPushed( 0 ) );
@@ -47,7 +47,7 @@ int main()
 
     {
       ReassemblerTestHarness test { "holes 4", 65000 };
-
+      cout << "holes 4" << endl;
       test.execute( Insert { "b", 1 } );
       test.execute( Insert { "ab", 0 } );
 
@@ -58,7 +58,7 @@ int main()
 
     {
       ReassemblerTestHarness test { "holes 5", 65000 };
-
+      cout << "holes 5" << endl;
       test.execute( Insert { "b", 1 } );
       test.execute( BytesPushed( 0 ) );
       test.execute( ReadAll( "" ) );
@@ -83,7 +83,7 @@ int main()
 
     {
       ReassemblerTestHarness test { "holes 6", 65000 };
-
+      cout << "holes 6" << endl;
       test.execute( Insert { "b", 1 } );
       test.execute( BytesPushed( 0 ) );
       test.execute( ReadAll( "" ) );
@@ -103,7 +103,7 @@ int main()
 
     {
       ReassemblerTestHarness test { "holes 7", 65000 };
-
+      cout << "holes 7" << endl;
       test.execute( Insert { "b", 1 } );
       test.execute( BytesPushed( 0 ) );
       test.execute( ReadAll( "" ) );
