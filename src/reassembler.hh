@@ -2,18 +2,21 @@
 
 #include "byte_stream.hh"
 
+#include <list>
 #include <string>
-#include <unordered_set>
 #include <unordered_map>
+#include <utility>
 
 struct Strobj
 {
   uint64_t first_index = -1;
   std::string data = "";
   bool is_last_substring = false;
+  // constructor
   Strobj() = default;
-  Strobj(uint64_t index, std::string &&content, bool is_last);
-  Strobj(Strobj &&strobj);
+  // move constructor
+  Strobj( uint64_t index, std::string&& content, bool is_last ) noexcept;
+  Strobj( Strobj&& strobj ) noexcept;
 };
 
 class Reassembler
@@ -45,11 +48,15 @@ public:
   uint64_t bytes_pending() const;
 
 private:
-  std::unordered_map<uint64_t, Strobj> saved_strojb = { };
+  std::unordered_map<uint64_t, Strobj> buffer_strobj = {};
+  std::list<std::pair<uint64_t, uint64_t>> buffer_domains = {};
 
-  const uint64_t TCP_MTU = 1460;
   uint64_t total_bytes_pending = 0;
   uint64_t next_need_index = -1;
 
-  bool toSend(Strobj &bytes, Writer &output);
+  bool outOfBound( const Strobj& segment, uint64_t available_capacity );
+  bool sendNow( Strobj& segment, uint64_t avaiable_capacity );
+  void storeInternally( Strobj&& segment, Writer& output );
+  void mergeBufferDomain();
+  void popFirstDomain( Writer& output );
 };
