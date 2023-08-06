@@ -108,8 +108,8 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
     total_bytes_pending += data.length();
     buffer_data.insert( { start, { std::move(data), is_last_substring } } );
   }
-  // mergerBuffer( it, is_last_substring );
   mergerBuffer();
+  // mergerBuffer( it, is_last_substring );
 }
 /* 
 void Reassembler::mergerBuffer( list<pair<uint64_t, uint64_t>>::iterator& pos, const bool is_last )
