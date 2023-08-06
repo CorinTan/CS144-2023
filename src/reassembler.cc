@@ -20,9 +20,9 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   // store internally
   else
     insertBuffer( first_index, data, is_last_substring );
-  // printBufferDomains();
+  printBufferDomains();
   popValidDomains( output );
-  updateBounds( output );
+  printBufferDomains();
 }
 
 inline void Reassembler::pushToWriter( const string& data, Writer& output, const bool last )
@@ -79,6 +79,8 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
 
   // 空直接插入
   if ( buffer_domains.empty() ) {
+    // cout << "buffer is empty." << endl;
+    total_bytes_pending += data.length();
     buffer_domains.insert( buffer_domains.end(), { start, end } );
     buffer_data.insert( { start, { std::move( data ), is_last_substring } } );
     return;
@@ -87,7 +89,6 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
   // 非空插入: 查找插入位置
   auto it = buffer_domains.begin();
   auto pos = buffer_domains.end(); 
-  bool need_merge = false;
   while ( it != buffer_domains.end() ) {
     if ( start <= it->first ) {
       pos = buffer_domains.insert( it, { start, end } );

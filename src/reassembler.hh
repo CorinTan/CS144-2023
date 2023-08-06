@@ -43,12 +43,12 @@ private:
   uint64_t lower_bound = 0;  // next_need_index
   uint64_t upper_bound = 0;  // [low_bound, upper_bound)
 
-  bool outOfBound( const uint64_t first_index, const string &data);
-  bool sendNow(  const uint64_t first_index, string &data);
+  bool outOfBound( const uint64_t first_index, const std::string &data);
+  bool sendNow(  const uint64_t first_index, std::string &data);
   void popValidDomains( Writer& output ); // 检查buffer中是否存在可发送的数据，存在则都发送
-  void insertBuffer( uint64_t first_index, string &data, bool is_last_substring);
-  bool mergerBuffer(std::list<std::pair<uint64_t, uint64_t>>::iterator &pos, string &data, const bool is_last);
+  void insertBuffer( uint64_t first_index, std::string &data, bool is_last_substring);
+  void mergerBuffer(std::list<std::pair<uint64_t, uint64_t>>::iterator &pos, std::string &data, const bool is_last);
   inline void updateBounds(Writer &output);
   void printBufferDomains(); // debug
-  inline void pushToWriter(const string &data, Writer &output, const bool last);
+  inline void pushToWriter(const std::string &data, Writer &output, const bool last);
 };
