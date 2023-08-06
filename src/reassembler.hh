@@ -7,19 +7,6 @@
 #include <unordered_map>
 #include <utility>
 
-struct Segment
-{
-  uint64_t first_index = -1;
-  std::string data = "";
-  bool is_last_substring = false;
-  // constructor
-  Segment() = default;
-  Segment( uint64_t index, std::string&& content, bool is_last ) noexcept;
-  // move constructor
-  Segment( Segment&& segment ) noexcept;
-  Segment &operator=(Segment&& segment) noexcept; 
-};
-
 class Reassembler
 {
 public:
@@ -49,16 +36,19 @@ public:
   uint64_t bytes_pending() const;
 
 private:
-  std::unordered_map<uint64_t, Segment> buffer_segment = {};
+  std::unordered_map<uint64_t, std::pair<std::string, bool> > buffer_data = {};
   std::list<std::pair<uint64_t, uint64_t>> buffer_domains = {};
 
   uint64_t total_bytes_pending = 0;
-  uint64_t next_need_index = 0;
+  uint64_t lower_bound = 0;  // next_need_index
+  uint64_t upper_bound = 0;  // [low_bound, upper_bound)
 
-  bool outOfBound( const Segment& segment, const uint64_t available_capacity );
-  bool sendNow( Segment& segment, const uint64_t avaiable_capacity );
-  void cleanBuffer();  // 根据 next_need_index 清理buffer中无效的domain
+  bool outOfBound( const uint64_t first_index, const string &data);
+  bool sendNow(  const uint64_t first_index, string &data);
   void popValidDomains( Writer& output ); // 检查buffer中是否存在可发送的数据，存在则都发送
-  void insertBuffer( Segment&& segment);
-  void mergeBuffer();
+  void insertBuffer( uint64_t first_index, string &data, bool is_last_substring);
+  bool mergerBuffer(std::list<std::pair<uint64_t, uint64_t>>::iterator &pos, string &data, const bool is_last);
+  inline void updateBounds(Writer &output);
+  void printBufferDomains(); // debug
+  inline void pushToWriter(const string &data, Writer &output, const bool last);
 };
