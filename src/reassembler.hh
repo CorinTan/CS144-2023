@@ -47,8 +47,9 @@ private:
   bool sendNow(  const uint64_t first_index, std::string &data);
   void popValidDomains( Writer& output ); // 检查buffer中是否存在可发送的数据，存在则都发送
   void insertBuffer( uint64_t first_index, std::string &data, bool is_last_substring);
-  void mergerBuffer(std::list<std::pair<uint64_t, uint64_t>>::iterator &pos, std::string &data, const bool is_last);
+  // void mergerBuffer(std::list<std::pair<uint64_t, uint64_t>>::iterator &pos, const bool is_last);
+  void mergerBuffer();
   inline void updateBounds(Writer &output);
-  void printBufferDomains(); // debug
   inline void pushToWriter(const std::string &data, Writer &output, const bool last);
+  // void printBufferDomains(); // debug
 };
