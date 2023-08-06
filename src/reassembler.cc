@@ -108,10 +108,9 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
     total_bytes_pending += data.length();
     buffer_data.insert( { start, { std::move(data), is_last_substring } } );
   }
-  mergerBuffer();
-  // mergerBuffer( it, is_last_substring );
+  mergerBuffer( it, is_last_substring );
 }
-/* 
+
 void Reassembler::mergerBuffer( list<pair<uint64_t, uint64_t>>::iterator& pos, const bool is_last )
 {
   cout << "Call: mergeBuffer " << endl;
@@ -151,51 +150,10 @@ void Reassembler::mergerBuffer( list<pair<uint64_t, uint64_t>>::iterator& pos, c
       ++pre, ++pos;
   }
 }
- */
-
-void Reassembler::mergerBuffer()
-{
-  if (buffer_domains.empty())
-    return ;
-  auto p = buffer_domains.begin();
-  auto post = p;
-  ++post;
-  while (post != buffer_domains.end()) {
-    if ( p->second >= post->second) {
-      // 包含，删除post
-      buffer_data.erase(post->first);
-      total_bytes_pending -= post->second - post->first;
-      post = buffer_domains.erase(post); // 删除并移动
-    }
-    else if (p->second >= post->first && p->second < post->second) {
-      // 交错
-      string new_data = std::move(buffer_data[p->first].first);
-      string joint_data = std::move(buffer_data[post->first].first);
-      total_bytes_pending -= p->second - post->first;
-      joint_data = joint_data.substr(p->second-post->first);
-      new_data += joint_data;
-      // 更新map
-      buffer_data[p->first].first = std::move(new_data);
-      buffer_data[p->first].second = buffer_data[p->first].second | buffer_data[post->first].second;
-      buffer_data.erase(post->first);
-      // 更新domain
-      p->second = post->second;
-      post = buffer_domains.erase(post); // 删除并移动
-    }
-    else
-      ++p, ++post;
-  }
-}
-
 
 void Reassembler::popValidDomains( Writer& output )
 {
   cout << "call popValidDomains " << endl;
-
-  // cout << "lower_bound :" << lower_bound << endl;
-  // cout << "Before pop unvalid :" << endl;
-  // printBufferDomains();
-
   // 删除无效区间
   while ( !buffer_domains.empty() && buffer_domains.front().second <= lower_bound ) {
     // 整个删除
@@ -203,21 +161,14 @@ void Reassembler::popValidDomains( Writer& output )
     total_bytes_pending -= buffer_domains.front().second - buffer_domains.front().first;
     buffer_domains.pop_front();
   }
-  // cout << "After pop unvalid :" << endl;
-  // printBufferDomains();
 
-  // 发送有效区间
-  // while ( !buffer_domains.empty() && buffer_domains.front().first <= lower_bound && buffer_domains.front().second
-  // > lower_bound) {
   while ( !buffer_domains.empty() && buffer_domains.front().first <= lower_bound ) {
     uint64_t start = buffer_domains.front().first;
     uint64_t end = buffer_domains.front().second; // [ )
     if ( buffer_data[start].first.length() < lower_bound - start )
       lower_bound = lower_bound;
     bool last = buffer_data[start].second;
-    // uint64_t send_length = end - lower_bound;
     string to_send = std::move( buffer_data[start].first );
-    // string to_send = buffer_data[first_domain.first].first;
     // 处理要传输的字符串，存储的都是有效区间
     if ( lower_bound > start ) // 前部截断
       to_send = to_send.substr( lower_bound - start );
@@ -225,27 +176,6 @@ void Reassembler::popValidDomains( Writer& output )
     pushToWriter( to_send, output, last );
     buffer_data.erase( start );
     total_bytes_pending -= end - start;
-    // total_bytes_pending -= send_length;
     buffer_domains.pop_front();
   }
 }
-/* 
-void Reassembler::printBufferDomains()
-{
-  // debug: 打印容器内容
-  if ( buffer_domains.empty() ) {
-    cout << "Buff is empty!" << endl;
-    return;
-  }
-
-  for ( auto it = buffer_domains.begin(); it != buffer_domains.end(); ++it ) {
-    auto next = it;
-    ++next;
-    cout << "[" << it->first << " , " << it->second << ")";
-    if ( next != buffer_domains.end() )
-      cout << " -> ";
-    else
-      cout << endl;
-  }
-}
- */
