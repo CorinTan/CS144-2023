@@ -19,21 +19,17 @@ void TCPReceiver::receive( TCPSenderMessage message, Reassembler& reassembler, W
 
 TCPReceiverMessage TCPReceiver::send( const Writer& inbound_stream ) const
 {
-  TCPReceiverMessage send_msg;  
-  if ( !isn ) {
-  // 未建立TCP连接
-    send_msg.ackno = nullopt;
-    send_msg.window_size = u64ToU16(inbound_stream.available_capacity() + 2); // + SYN + FIN
-  } else {
-  // 已建立TCP连接
+  TCPReceiverMessage send_msg;
+  send_msg.window_size = u64ToU16( inbound_stream.available_capacity() );
+  if ( isn ) {
+    // 已建立TCP连接
     const uint64_t abs_seqno = inbound_stream.bytes_pushed() + 1 + inbound_stream.is_closed(); // stream index to abs_seq index
-    send_msg.ackno = Wrap32::wrap(abs_seqno, isn.value());
-    send_msg.window_size = u64ToU16(inbound_stream.available_capacity() +  inbound_stream.is_closed() ); // + FIN?
+    send_msg.ackno = Wrap32::wrap( abs_seqno, isn.value() );
   }
   return send_msg;
 }
 
-inline uint16_t TCPReceiver::u64ToU16(uint64_t num_64) const
+inline uint16_t TCPReceiver::u64ToU16( uint64_t num_64 ) const
 {
-  return num_64 > UINT16_MAX ? UINT16_MAX : num_64;  
+  return num_64 > UINT16_MAX ? UINT16_MAX : num_64;
 }
