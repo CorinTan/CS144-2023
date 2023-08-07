@@ -13,12 +13,13 @@ uint64_t Wrap32::unwrap( Wrap32 zero_point, uint64_t checkpoint ) const
 {
   uint64_t dist = raw_value_ - zero_point.raw_value_;
   uint64_t add_num = static_cast<uint64_t>( 1 ) << 32;
-  bool move = false;
-  while ( dist < checkpoint ) {
-    dist += add_num;
-    move = true;
+  bool add = false;
+  if (dist < checkpoint) {
+    dist += ((checkpoint - dist) / add_num + 1)* add_num;
+    add = true;
   }
-  if ( move && dist - checkpoint > checkpoint - ( dist - add_num ) )
+
+  if ( add && dist - checkpoint > checkpoint - ( dist - add_num ) )
     dist -= add_num;
   return dist;
 }
