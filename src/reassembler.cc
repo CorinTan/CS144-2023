@@ -1,5 +1,4 @@
 #include "reassembler.hh"
-#include <iostream>
 
 using namespace std;
 
@@ -38,13 +37,11 @@ inline void Reassembler::updateBounds( Writer& output )
 
 uint64_t Reassembler::bytes_pending() const
 {
-  cout << "call bytes_pending " << endl;
   return total_bytes_pending;
 }
 
 bool Reassembler::outOfBound( const uint64_t first_index, const string& data )
 {
-  cout << "call outOfBound " << endl;
   // The pipe is full or index out of bound.
   return ( !data.empty() && lower_bound == upper_bound ) || ( first_index >= upper_bound )
          || ( first_index + data.length() < lower_bound );
@@ -52,7 +49,6 @@ bool Reassembler::outOfBound( const uint64_t first_index, const string& data )
 
 bool Reassembler::sendNow( const uint64_t first_index, string& data )
 {
-  cout << "call sendNow " << endl;
   if ( first_index > lower_bound )
     return false;
   if ( first_index == lower_bound )
@@ -66,8 +62,6 @@ bool Reassembler::sendNow( const uint64_t first_index, string& data )
 
 void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last_substring )
 {
-  // total_bytes_pending 由函数 mergeBuffer 写入
-  cout << "call insertBuffer " << endl;
   // [start, end)
   uint64_t start = first_index;
   uint64_t end = start + data.length();
@@ -113,7 +107,6 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
 
 void Reassembler::mergerBuffer( list<pair<uint64_t, uint64_t>>::iterator& pos, const bool is_last )
 {
-  cout << "Call: mergeBuffer " << endl;
   auto pre = pos;
   // 从pre的节点开始向后检查重叠并合并
   if ( pos != buffer_domains.begin() )
@@ -153,7 +146,6 @@ void Reassembler::mergerBuffer( list<pair<uint64_t, uint64_t>>::iterator& pos, c
 
 void Reassembler::popValidDomains( Writer& output )
 {
-  cout << "call popValidDomains " << endl;
   // 删除无效区间
   while ( !buffer_domains.empty() && buffer_domains.front().second <= lower_bound ) {
     // 整个删除
