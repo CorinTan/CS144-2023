@@ -102,45 +102,40 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
     total_bytes_pending += data.length();
     buffer_data.insert( { start, { std::move(data), is_last_substring } } );
   }
-  mergerBuffer( it, is_last_substring );
+  mergerBuffer();
 }
 
-void Reassembler::mergerBuffer( list<pair<uint64_t, uint64_t>>::iterator& pos, const bool is_last )
+void Reassembler::mergerBuffer()
 {
-  auto pre = pos;
-  // 从pre的节点开始向后检查重叠并合并
-  if ( pos != buffer_domains.begin() )
-    --pre;
-  else
-    ++pos;
-  while ( pos != buffer_domains.end() ) {
-    if ( pre->second >= pos->second ) {
-      // 区间被包含, 删除当前区间
-      // 修改pending, 删除插入的map
-      total_bytes_pending -= buffer_data[pos->first].first.length();
-      buffer_data.erase( pos->first );
-      buffer_domains.erase( pos );
-      break;
-    } else if ( pre->second >= pos->first && pre->second < pos->second ) {
-      // 与前一区间合并, 更新前区间，删除当前区间。
-      // 修改前区间对应的map数据, 修改pending, 不需要插入map
-      
-      string joint_data = std::move( buffer_data[pos->first].first );
-      buffer_data.erase( pos->first );
-
-      bool last = buffer_data[pre->first].second | is_last;
-      string new_data = std::move( buffer_data[pre->first].first );
-      joint_data = joint_data.substr( pre->second - pos->first, pos->second - pre->second );
+  if (buffer_domains.empty())
+    return ;
+  auto p = buffer_domains.begin();
+  auto post = p;
+  ++post;
+  while (post != buffer_domains.end()) {
+    if ( p->second >= post->second) {
+      // 包含，删除post
+      buffer_data.erase(post->first);
+      total_bytes_pending -= post->second - post->first;
+      post = buffer_domains.erase(post); // 删除并移动
+    }
+    else if (p->second >= post->first && p->second < post->second) {
+      // 交错
+      string new_data = std::move(buffer_data[p->first].first);
+      string joint_data = std::move(buffer_data[post->first].first);
+      total_bytes_pending -= p->second - post->first;
+      joint_data = joint_data.substr(p->second-post->first);
       new_data += joint_data;
-
-      pre->second = pos->second;
-      pos = buffer_domains.erase( pos ); // 删除原区间并移动迭代器
-
-      buffer_data[pre->first].first = std::move( new_data );
-      buffer_data[pre->first].second = last;
-      total_bytes_pending += joint_data.length();
-    } else
-      ++pre, ++pos;
+      // 更新map
+      buffer_data[p->first].first = std::move(new_data);
+      buffer_data[p->first].second = buffer_data[p->first].second | buffer_data[post->first].second;
+      buffer_data.erase(post->first);
+      // 更新domain
+      p->second = post->second;
+      post = buffer_domains.erase(post); // 删除并移动
+    }
+    else
+      ++p, ++post;
   }
 }
 
@@ -148,12 +143,12 @@ void Reassembler::popValidDomains( Writer& output )
 {
   // 删除无效区间
   while ( !buffer_domains.empty() && buffer_domains.front().second <= lower_bound ) {
-    // 整个删除
     buffer_data.erase( buffer_domains.front().first );
     total_bytes_pending -= buffer_domains.front().second - buffer_domains.front().first;
     buffer_domains.pop_front();
   }
 
+  // 发送有效区间
   while ( !buffer_domains.empty() && buffer_domains.front().first <= lower_bound ) {
     uint64_t start = buffer_domains.front().first;
     uint64_t end = buffer_domains.front().second; // [ )

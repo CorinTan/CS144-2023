@@ -42,11 +42,11 @@ private:
   uint64_t lower_bound = 0;  // next_need_index
   uint64_t upper_bound = 0;  // [low_bound, upper_bound)
 
-  inline void updateBounds(Writer &output);
-  inline void pushToWriter(const std::string &data, Writer &output, const bool last);
   bool outOfBound( const uint64_t first_index, const std::string &data);
   bool sendNow(  const uint64_t first_index, std::string &data);
-  void insertBuffer( uint64_t first_index, std::string &data, bool is_last_substring);
-  void mergerBuffer(std::list<std::pair<uint64_t, uint64_t>>::iterator &pos, const bool is_last);
   void popValidDomains( Writer& output ); // 检查buffer中是否存在可发送的数据，存在则都发送
+  void insertBuffer( uint64_t first_index, std::string &data, bool is_last_substring);
+  void mergerBuffer();
+  inline void updateBounds(Writer &output);
+  inline void pushToWriter(const std::string &data, Writer &output, const bool last);
 };
