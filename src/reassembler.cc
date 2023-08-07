@@ -70,8 +70,10 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
   if ( buffer_domains.empty() ) {
     // cout << "buffer is empty." << endl;
     // 检查要放入buffer的字节是否超出
-    if (first_index + data.length() > upper_bound)
+    if (first_index + data.length() > upper_bound) {
       data = data.substr(0, first_index + data.length() - upper_bound);
+      end = upper_bound;
+    }
     total_bytes_pending += data.length();
     buffer_domains.insert( buffer_domains.end(), { start, end } );
     buffer_data.insert( { start, { data, is_last_substring } } );
