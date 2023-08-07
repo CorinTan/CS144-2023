@@ -1,6 +1,6 @@
 #pragma once
 
-#include <queue>
+#include <deque>
 #include <stdexcept>
 #include <string>
 #include <string_view>

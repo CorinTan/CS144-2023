@@ -1,5 +1,5 @@
 #include "byte_stream.hh"
-#include <iostream>
+// #include <iostream>
 #include <stdexcept>
 
 using namespace std;
@@ -18,17 +18,17 @@ void Writer::push( string data )
   }
   // 已关闭
   else if ( closed_ ) {
-    cerr << "The byteStream is closed!" << endl;
+    // cerr << "The byteStream is closed!" << endl;
     return;
   }
   // 已经出错
   else if ( has_error_ ) {
-    cerr << "The byteStream had an error!" << endl;
+    // cerr << "The byteStream had an error!" << endl;
     return;
   }
   // 没有容量
   else if ( available_capacity() == 0 ) {
-    cerr << "No enough capacity to write!" << endl;
+    // cerr << "No enough capacity to write!" << endl;
     return;
   }
   // 写入
@@ -37,9 +37,9 @@ void Writer::push( string data )
     const uint64_t write_len = len < available_capacity() ? len : available_capacity();
     if ( write_len < len ) {
       data = data.substr( 0, write_len );
-      string err_msg = "No enough capacity, Write data : ";
+      /* string err_msg = "No enough capacity, Write data : ";
       ( err_msg += to_string( write_len ) += '/' ) += to_string( len );
-      cerr << err_msg << endl;
+      cerr << err_msg << endl; */
     }
     pipe_string_.push_back( std::move( data ) );
     pipe_view_.emplace_back( pipe_string_.back() );
@@ -51,11 +51,11 @@ void Writer::push( string data )
 void Writer::close()
 {
   // check all data popped.
-  if ( total_popped_ != total_pushed_ ) {
+  /* if ( total_popped_ != total_pushed_ ) {
     const string msg = "There is some data unpopped!";
     std::cerr << msg << std::endl;
   }
-  std::cout << "The pipe is closed!" << std::endl;
+  std::cout << "The pipe is closed!" << std::endl; */
   closed_ = true;
 }
 
@@ -106,8 +106,8 @@ void Reader::pop( uint64_t len )
   uint64_t pop_len = len < left ? len : left;
 
   // 不足量
-  if ( len > left )
-    cerr << "Will pop " << pop_len << "/" << len << "bytes!" << endl;
+  // if ( len > left )
+  //   cerr << "Will pop " << pop_len << "/" << len << "bytes!" << endl;
   // 读数据
   while ( pop_len > 0 ) {
     uint64_t cur_pop_len = pipe_view_.front().length();
