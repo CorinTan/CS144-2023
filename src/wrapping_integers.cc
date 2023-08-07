@@ -11,7 +11,9 @@ Wrap32 Wrap32::wrap( uint64_t n, Wrap32 zero_point )
 /* Convert seqno -> absolute seqno */
 uint64_t Wrap32::unwrap( Wrap32 zero_point, uint64_t checkpoint ) const
 {
-  uint64_t add_num = 1 << 32;
+  
+  uint64_t add_num = 1;
+  add_num <<= 32;
   uint64_t zero_point_64 = zero_point.raw_value_;
   bool move = false;
   while ( zero_point_64 < checkpoint ) {
