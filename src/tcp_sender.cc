@@ -65,9 +65,9 @@ void TCPSender::push( Reader& outbound_stream )
   // 此处的payload_size = seq数
   seg_to_send.seqno = Wrap32::wrap( outbound_stream.bytes_popped() - payload_size, isn_ );
   seg_to_send.SYN = false;
-  seg_to_send.payload = payload;  
+  seg_to_send.payload = payload;
   seg_to_send.FIN = false;
-  send_segments_.push(std::move(seg_to_send));
+  send_segments_.push( std::move( seg_to_send ) );
 }
 
 TCPSenderMessage TCPSender::send_empty_message() const
@@ -104,19 +104,60 @@ void TCPSender::tick( const size_t ms_since_last_tick )
 {
   if ( retrans_timer_.is_running() && !retrans_timer_.is_expired() ) {
     retrans_timer_.increase_round_time( ms_since_last_tick );
-    if ( retrans_timer_.get_round_time() >= cur_RTO_ms_ )
-      retrans_timer_.set_expired();
   }
-
   // 3. 重启重传定时器
   retrans_timer_.restart( cur_RTO_ms_ );
 }
 
 /* Timer function definations */
+inline void Timer::set_expired()
+{
+  is_expired_ = true;
+}
+
 inline void Timer::reset()
 {
   round_time_ = 0;
-  uint64_t RTO_ms_ = 0;
+  RTO_ms_ = 0;
   is_running_ = false;
   is_expired_ = false;
+}
+
+inline void Timer::start( const uint64_t cur_RTO_ms )
+{
+  is_running_ = true;
+  RTO_ms_ = cur_RTO_ms;
+}
+
+inline void Timer::stop()
+{
+  is_running_ = false;
+}
+
+inline void Timer::restart( const uint64_t cur_RTO_ms )
+{
+  reset();
+  start( cur_RTO_ms );
+}
+
+inline bool Timer::is_running() const
+{
+  return is_running_;
+}
+
+inline bool Timer::is_expired() const
+{
+  return is_expired_;
+}
+
+inline size_t Timer::get_round_time() const
+{
+  return round_time_;
+}
+
+inline void Timer::increase_round_time( const size_t ms )
+{
+  round_time_ += ms;
+  if ( round_time_ >= RTO_ms_ )
+    set_expired();
 }
