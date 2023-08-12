@@ -14,8 +14,8 @@ TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
   , next_abs_seqno_( 0 )
   , last_ackno_( isn_ )
   , window_size_( 1 )
+  , cur_window_size_(window_size_)
   , consecutive_retrans_cnt_( 0 )
-
   , retrans_timer_()
   , send_segments_()
   , track_segments_()
@@ -65,7 +65,6 @@ void TCPSender::push( Reader& outbound_stream )
 
   while ( !outbound_stream.is_finished() && payload.size() != need_bytes ) {
     string_view next = outbound_stream.peek();
-    uint64_t bytes_to_pop = next.size();
     if ( payload.size() + next.size() > need_bytes ) 
       payload += next.substr( 0, need_bytes - payload.size() );
   }
