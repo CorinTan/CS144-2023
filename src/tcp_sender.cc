@@ -14,7 +14,7 @@ TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
   , next_abs_seqno_( 0 )
   , last_ackno_( isn_ )
   , window_size_( 1 )
-  , cur_window_size_(window_size_)
+  , cur_window_size_( window_size_ )
   , consecutive_retrans_cnt_( 0 )
   , retrans_timer_()
   , send_segments_()
@@ -37,12 +37,16 @@ uint64_t TCPSender::consecutive_retransmissions() const
 
 optional<TCPSenderMessage> TCPSender::maybe_send()
 {
-  // 发送TCP段（可能的情况下）
   optional<TCPSenderMessage> seg_maybe_send;
+  
   // 计时器过期，重传最早的TCP段（若存在) (计时器过期，一定非空？)
-  if ( retrans_timer_.is_expired() && !track_segments_.empty() ) {
+  if ( retrans_timer_.is_expired() ) {
     seg_maybe_send = track_segments_.front(); // 收到ack才pop
-    ++consecutive_retrans_cnt_;               // 记录连续重传次数, 没有连续重传的时候要置为0
+    if (cur_window_size_ ) {
+      ++consecutive_retrans_cnt_; // 记录连续重传次数, 没有连续重传的时候要置为0
+      cur_RTO_ms_ *= 2;
+    }
+    retrans_timer_.restart(cur_RTO_ms_);
   }
 
   // 发送缓存中的TCP段( 根据缓存和接收窗口的情况 )
@@ -53,6 +57,9 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
     next_abs_seqno_ += seg_maybe_send.value().sequence_length();
     track_segments_.push( seg_maybe_send.value() );
   }
+  
+  if (!retrans_timer_.is_running())
+    retrans_timer_.start(cur_RTO_ms_);
   return seg_maybe_send;
 }
 
@@ -62,19 +69,21 @@ void TCPSender::push( Reader& outbound_stream )
   const uint64_t need_bytes
     = TCPConfig::MAX_PAYLOAD_SIZE < cur_window_size_ ? TCPConfig::MAX_PAYLOAD_SIZE : cur_window_size_;
   string payload;
-
   while ( !outbound_stream.is_finished() && payload.size() != need_bytes ) {
     string_view next = outbound_stream.peek();
-    if ( payload.size() + next.size() > need_bytes ) 
-      payload += next.substr( 0, need_bytes - payload.size() );
+    uint64_t bytes_to_pop = next.size();
+    if ( payload.size() + next.size() > need_bytes ) {
+      bytes_to_pop = need_bytes - payload.size();
+      payload += next.substr( 0, bytes_to_pop );
+    }
+    outbound_stream.pop( bytes_to_pop );
   }
-    outbound_stream.pop( payload.size() );
 
   TCPSenderMessage seg_to_send;
   seg_to_send.seqno = Wrap32::wrap( outbound_stream.bytes_popped() - payload.size(), isn_ );
-  seg_to_send.SYN = false; // 什么时候设置SYN？
+  seg_to_send.SYN = next_abs_seqno_ == 0; // 什么时候设置SYN？
   seg_to_send.payload = payload;
-  seg_to_send.FIN = false;            // // 什么时候设置FIN？
+  seg_to_send.FIN = false;            // 什么时候设置FIN？
   send_segments_.push( seg_to_send ); // 性能ok：只复制了智能指针
   cur_window_size_ -= seg_to_send.sequence_length();
 }
@@ -115,8 +124,6 @@ void TCPSender::tick( const size_t ms_since_last_tick )
   if ( retrans_timer_.is_running() && !retrans_timer_.is_expired() ) {
     retrans_timer_.increase_round_time( ms_since_last_tick );
   }
-  // 3. 重启重传定时器
-  retrans_timer_.restart( cur_RTO_ms_ );
 }
 
 /* Timer function definations */
@@ -161,7 +168,7 @@ inline bool Timer::is_expired() const
   return is_expired_;
 }
 
-inline size_t Timer::get_round_time() const
+inline uint64_t Timer::get_round_time() const
 {
   return round_time_;
 }

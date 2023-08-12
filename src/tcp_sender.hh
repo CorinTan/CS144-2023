@@ -10,7 +10,7 @@
 class Timer
 {
 private:
-  size_t round_time_ = 0;   // 未判定为超时的累积计时
+  uint64_t round_time_ = 0;   // 未判定为超时的累积计时
   uint64_t RTO_ms_ = 0;     // 当前RTO_ms
   bool is_running_ = false; // 运行状态
   bool is_expired_ = false; // 过期状态
@@ -25,7 +25,7 @@ public:
 
   inline bool is_running() const;
   inline bool is_expired() const;
-  inline size_t get_round_time() const;
+  inline uint64_t get_round_time() const;
 
   inline void increase_round_time( const size_t ms );
 };
