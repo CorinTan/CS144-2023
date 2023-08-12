@@ -22,6 +22,9 @@ TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
 
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
+  if ( track_segments_.empty() )
+    return 0;
+  // 还没有收到ack的序号数
   const uint64_t last_abs_ackno = last_ackno_.unwrap( isn_, next_abs_seqno_ );
   return next_abs_seqno_ - last_abs_ackno;
 }
@@ -33,24 +36,30 @@ uint64_t TCPSender::consecutive_retransmissions() const
 
 optional<TCPSenderMessage> TCPSender::maybe_send()
 {
+  // 发送TCP段（可能的情况下）
   optional<TCPSenderMessage> seg_maybe_send;
-  // 计时器过期，重传最早的TCP段（若存在)
+  // 计时器过期，重传最早的TCP段（若存在) (计时器过期，一定非空？)
   if ( retrans_timer_.is_expired() && !track_segments_.empty() ) {
     seg_maybe_send = track_segments_.front();
     track_segments_.pop();
     ++consecutive_retrans_cnt_; // 记录连续重传次数, 没有连续重传的时候要置为0
   }
-  // 发送缓存中的TCP段
+  // 发送缓存中的TCP段( 根据缓存和接收窗口的情况 )
   else if ( !send_segments_.empty() ) {
+    consecutive_retrans_cnt_ = 0; // 正常发送，连续重传次数置为0
     seg_maybe_send = send_segments_.front();
     send_segments_.pop();
+    if (seg_maybe_send.value().sequence_length()) {
+      next_abs_seqno_ += seg_maybe_send.value().sequence_length();
+      track_segments_.push(seg_maybe_send.value());
+    }
   }
   return seg_maybe_send;
 }
 
 void TCPSender::push( Reader& outbound_stream )
 {
-  // 从 outbound_stream 读取相应字节数，并封装成 TCP segment放入发送队列
+  // 从 outbound_stream 读取相应字节数，并放入发送队列
   const uint64_t payload_size = min( TCPConfig::MAX_PAYLOAD_SIZE, outbound_stream.bytes_buffered() );
   string payload;
   while ( payload.size() != payload_size ) {

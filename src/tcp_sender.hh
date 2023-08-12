@@ -38,13 +38,14 @@ private:
   uint64_t cur_RTO_ms_;
   uint64_t next_abs_seqno_; // 发送的/下一个序列号数
   Wrap32 last_ackno_;       // 最后接收到的ack序号
-  uint16_t windows_size_;
-  uint64_t consecutive_retrans_cnt_;
-
+  uint16_t windows_size_;   // 可发送的窗口大小  
+  uint64_t consecutive_retrans_cnt_;  // 连续重传次数
+  
   Timer retrans_timer_;
   std::queue<TCPSenderMessage> send_segments_;  // 要发送的TCP段队列
   std::queue<TCPSenderMessage> track_segments_; // 追踪已经发出但未被确认的tcp段
 
+  
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( uint64_t initial_RTO_ms, std::optional<Wrap32> fixed_isn );
