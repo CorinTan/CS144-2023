@@ -36,9 +36,11 @@ private:
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
   uint64_t cur_RTO_ms_;
+  
   uint64_t next_abs_seqno_; // 发送的/下一个序列号数
   Wrap32 last_ackno_;       // 最后接收到的ack序号
-  uint16_t windows_size_;   // 可发送的窗口大小  
+  uint16_t window_size_;   // 窗口大小  
+  uint16_t cur_window_size_; // 当前窗口大小
   uint64_t consecutive_retrans_cnt_;  // 连续重传次数
   
   Timer retrans_timer_;
