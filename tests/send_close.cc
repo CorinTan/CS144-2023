@@ -70,7 +70,7 @@ int main()
       TCPConfig cfg;
       const Wrap32 isn( rd() );
       cfg.fixed_isn = isn;
-
+      cout << "FIN acked test" << endl; 
       TCPSenderTestHarness test { "FIN acked test", cfg };
       test.execute( Push {} );
       test.execute( ExpectMessage {}.with_no_flags().with_syn( true ).with_payload_size( 0 ).with_seqno( isn ) );
@@ -90,7 +90,6 @@ int main()
       TCPConfig cfg;
       const Wrap32 isn( rd() );
       cfg.fixed_isn = isn;
-
       TCPSenderTestHarness test { "FIN not acked test", cfg };
       test.execute( Push {} );
       test.execute( ExpectMessage {}.with_no_flags().with_syn( true ).with_payload_size( 0 ).with_seqno( isn ) );
