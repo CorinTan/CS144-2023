@@ -64,38 +64,42 @@ void TCPSender::push( Reader& outbound_stream )
 {
   TCPSenderMessage seg_to_send;
   seg_to_send.SYN = !syn_send_;                                  // 发送TCP建立请求
-  seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取前已关闭
+  // seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取前已关闭
   uint64_t need_bytes;
   if ( seg_to_send.SYN || seg_to_send.FIN )
     need_bytes = 0;
   else
     need_bytes = TCPConfig::MAX_PAYLOAD_SIZE < send_window_size_ ? TCPConfig::MAX_PAYLOAD_SIZE : send_window_size_;
 
-  string payload;
-  // 从 outbound_stream 读取相应字节流 : 填满窗口或者无法读到数据（已经发送完或者暂时没有数据可读）
-  while ( outbound_stream.bytes_buffered() && payload.size() != need_bytes ) {
-    string_view next = outbound_stream.peek();
-    uint64_t bytes_to_pop = next.size();
-    if ( payload.size() + next.size() > need_bytes )
-      bytes_to_pop = need_bytes - payload.size();
-    payload += next.substr( 0, bytes_to_pop );
-    outbound_stream.pop( bytes_to_pop );
-  }
-
-  // 封装TCP段，插入发送队列
-  seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取后关闭
-  seg_to_send.payload = payload;
-  if ( seg_to_send.sequence_length() && seg_to_send.sequence_length() <= send_window_size_ ) {
-    if ( seg_to_send.SYN )
-      syn_send_ = true;
-    if ( seg_to_send.FIN )
-      fin_send_ = true;
-    seg_to_send.seqno = isn_ + next_abs_seqno_;
-    send_window_size_ -= seg_to_send.sequence_length();
-    next_abs_seqno_ += seg_to_send.sequence_length();
-    segments_to_send_.push_back( seg_to_send );     // 性能ok：只复制了智能指针
-    outstanding_segments_.push_back( seg_to_send ); // 追踪发出的tcp段
-    outstanding_seq_cnt_ += seg_to_send.sequence_length();
+  while ( true ) {
+    string payload;
+    // 从 outbound_stream 读取相应字节流 : 填满窗口或者无法读到数据（已经发送完或者暂时没有数据可读）
+    while ( outbound_stream.bytes_buffered() && payload.size() != need_bytes ) {
+      string_view next = outbound_stream.peek();
+      uint64_t bytes_to_pop = next.size();
+      if ( payload.size() + next.size() > need_bytes )
+        bytes_to_pop = need_bytes - payload.size();
+      payload += next.substr( 0, bytes_to_pop );
+      outbound_stream.pop( bytes_to_pop );
+    }
+    // 封装TCP段，插入发送队列
+    if (!seg_to_send.FIN && seg_to_send.sequence_length() < send_window_size_) 
+      seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取后关闭
+    seg_to_send.payload = payload;
+    if ( seg_to_send.sequence_length() && seg_to_send.sequence_length() <= send_window_size_ ) {
+      if ( seg_to_send.SYN )
+        syn_send_ = true;
+      if ( seg_to_send.FIN )
+        fin_send_ = true;
+      seg_to_send.seqno = isn_ + next_abs_seqno_;
+      send_window_size_ -= seg_to_send.sequence_length();
+      next_abs_seqno_ += seg_to_send.sequence_length();
+      segments_to_send_.push_back( seg_to_send );     // 性能ok：只复制了智能指针
+      outstanding_segments_.push_back( seg_to_send ); // 追踪发出的tcp段
+      outstanding_seq_cnt_ += seg_to_send.sequence_length();
+    }
+    if ( send_window_size_ == 0 || !outbound_stream.bytes_buffered() )
+      break;
   }
 }
 
