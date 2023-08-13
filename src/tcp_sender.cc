@@ -19,7 +19,6 @@ TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
 
   , next_abs_seqno_( 0 )
   , last_ackno_()
-  , last_seqno_()
   , window_size_( 1 )
   , send_window_size_( window_size_ )
   , consecutive_retrans_cnt_( 0 )
@@ -46,18 +45,19 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
   if ( !segments_to_send_.empty() ) {
     if ( !retransmit_ )
       consecutive_retrans_cnt_ = 0; // 正常发送，连续重传次数置为0
-    seg_maybe_send = segments_to_send_.front();
-    segments_to_send_.pop_front();
+    if ( segments_to_send_.front().sequence_length() <= window_size_ ) {
+      seg_maybe_send = segments_to_send_.front();
+      segments_to_send_.pop_front();
+    }
   }
 
   if ( seg_maybe_send ) {
     if ( !retrans_timer_.is_running() )
       retrans_timer_.start( cur_RTO_ms_ );
-   /*  cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
+    cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
          << " SYN=" << seg_maybe_send.value().SYN << " FIN=" << seg_maybe_send.value().FIN
          << " payload_size=" << seg_maybe_send.value().payload.length()
-         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl; */
-    last_seqno_ = seg_maybe_send.value().seqno + seg_maybe_send.value().sequence_length(); 
+         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl;
   }
   return seg_maybe_send;
 }
@@ -71,8 +71,8 @@ void TCPSender::push( Reader& outbound_stream )
     need_bytes = 0;
   else
     need_bytes = TCPConfig::MAX_PAYLOAD_SIZE < send_window_size_ ? TCPConfig::MAX_PAYLOAD_SIZE : send_window_size_;
-  
-  if (send_window_size_ == 2)
+
+  if ( send_window_size_ == 3 )
     cout << "send_window_size_: " << send_window_size_ << endl;
   while ( true ) {
     string payload;
@@ -116,38 +116,47 @@ TCPSenderMessage TCPSender::send_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
+  TCPSenderMessage front;
+  uint64_t front_abs_seqno;
+  uint64_t lower_bound;
+
   if ( msg.ackno ) {
     const uint64_t abs_ackno = msg.ackno.value().unwrap( isn_, next_abs_seqno_ );
     const uint64_t abs_last_ackno = last_ackno_ ? last_ackno_.value().unwrap( isn_, next_abs_seqno_ ) : 0;
     if ( abs_ackno > next_abs_seqno_ || abs_ackno < abs_last_ackno )
       return; // 无效ack
-    if (abs_ackno == next_abs_seqno_ || abs_ackno == abs_last_ackno)
+    front = outstanding_segments_.front();
+    front_abs_seqno = ( front.seqno + front.sequence_length() ).unwrap( isn_, next_abs_seqno_ );
+    lower_bound = msg.ackno.value().unwrap( isn_, next_abs_seqno_ );
+    if ( last_ackno_ != msg.ackno && lower_bound < front_abs_seqno )
+      return; // 无效ack
   }
 
-  // 更新窗口信息
+  // 有效ack, 更新窗口信息
   window_size_ = msg.window_size;
   send_window_size_ = window_size_ ? window_size_ : 1;
   cout << "收到ACK,更新窗口为: " << send_window_size_ << endl;
+
   if ( msg.ackno ) {
-    if ( last_ackno_ == msg.ackno ) 
-      return;
-    last_ackno_ = msg.ackno.value();           // 更新ackno
-    cur_RTO_ms_ = initial_RTO_ms_;             // 重置RTO
-    consecutive_retrans_cnt_ = 0;              // 重置连续重传计数器
-    while ( !outstanding_segments_.empty() ) { // 移除buffer中已经被确认的segments
-      const auto& front = outstanding_segments_.front();
-      const uint64_t front_abs_seqno = front.seqno.unwrap( isn_, next_abs_seqno_ );
-      const uint64_t lower_bound = msg.ackno.value().unwrap( isn_, next_abs_seqno_ );
-      if ( front_abs_seqno < lower_bound ) {
+    last_ackno_ = msg.ackno.value();                                   // 更新ackno
+    lower_bound = last_ackno_.value().unwrap( isn_, next_abs_seqno_ ); // 更新lower_bound
+    cur_RTO_ms_ = initial_RTO_ms_;                                     // 重置RTO
+    consecutive_retrans_cnt_ = 0;                                      // 重置连续重传计数器
+    bool popped = false;                                               // 是否有效接收
+    while ( !outstanding_segments_.empty() ) {                         // 移除buffer中已经被确认的segments
+      front = outstanding_segments_.front();
+      front_abs_seqno = ( front.seqno + front.sequence_length() ).unwrap( isn_, next_abs_seqno_ );
+      if ( front_abs_seqno <= lower_bound ) {
         outstanding_seq_cnt_ -= outstanding_segments_.front().sequence_length();
         outstanding_segments_.pop_front();
+        popped = true;
       } else
         break;
     }
     if ( outstanding_segments_.empty() ) {
       retrans_timer_.stop(); // 所有segment都被接收， 停止timer
       retransmit_ = false;
-    } else
+    } else if ( popped )
       retrans_timer_.restart( cur_RTO_ms_ ); // 重启定时器
   }
 }
