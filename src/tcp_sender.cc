@@ -145,7 +145,6 @@ void TCPSender::tick( const size_t ms_since_last_tick )
       segments_to_send_.push_front( outstanding_segments_.front() ); // 收到ack才pop
       retransmit_ = true;
       if ( window_size_ ) {
-        // 考虑假 “1” ？
         ++consecutive_retrans_cnt_; // 记录连续重传次数, 没有连续重传的时候要置为0
         cur_RTO_ms_ *= 2;
       }
