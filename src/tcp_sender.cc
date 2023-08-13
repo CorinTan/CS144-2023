@@ -10,11 +10,13 @@ using namespace std;
 
 TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
   : isn_( fixed_isn.value_or( Wrap32 { random_device()() } ) )
-  , fin_ack_()
   , initial_RTO_ms_( initial_RTO_ms )
   , cur_RTO_ms_( initial_RTO_ms )
+
   , retransmit_( false )
-  , connected_( false )
+  , syn_send_( false )
+  , fin_send_( false )
+
   , next_abs_seqno_( 0 )
   , window_size_( 1 )
   , send_window_size_( window_size_ )
@@ -49,12 +51,10 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
   if ( seg_maybe_send ) {
     if ( !retrans_timer_.is_running() )
       retrans_timer_.start( cur_RTO_ms_ );
-    if ( seg_maybe_send.value().FIN )
-      fin_ack_ = seg_maybe_send.value().seqno + seg_maybe_send.value().sequence_length();
-    cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
+    /* cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
          << " SYN=" << seg_maybe_send.value().SYN << " FIN=" << seg_maybe_send.value().FIN
          << " payload_size=" << seg_maybe_send.value().payload.length()
-         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl;
+         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl; */
   }
   return seg_maybe_send;
 }
@@ -62,8 +62,8 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 void TCPSender::push( Reader& outbound_stream )
 {
   TCPSenderMessage seg_to_send;
-  seg_to_send.SYN = next_abs_seqno_ == 0 && !connected_; // 发送TCP建立请求
-  seg_to_send.FIN = outbound_stream.is_finished();       // 读取前已关闭
+  seg_to_send.SYN = !syn_send_;                                  // 发送TCP建立请求
+  seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取前已关闭
   uint64_t need_bytes;
   if ( seg_to_send.SYN || seg_to_send.FIN )
     need_bytes = 0;
@@ -82,9 +82,13 @@ void TCPSender::push( Reader& outbound_stream )
   }
 
   // 封装TCP段，插入发送队列
-  seg_to_send.FIN = outbound_stream.is_finished(); // 读取后关闭
+  seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取后关闭
   seg_to_send.payload = payload;
   if ( seg_to_send.sequence_length() && seg_to_send.sequence_length() <= send_window_size_ ) {
+    if ( seg_to_send.SYN )
+      syn_send_ = true;
+    if (seg_to_send.FIN)
+      fin_send_ = true;
     seg_to_send.seqno = isn_ + next_abs_seqno_;
     send_window_size_ -= seg_to_send.sequence_length();
     next_abs_seqno_ += seg_to_send.sequence_length();
@@ -97,7 +101,7 @@ void TCPSender::push( Reader& outbound_stream )
 TCPSenderMessage TCPSender::send_empty_message() const
 {
   // 不占据序列号，也不追踪和重发
-  cout << "要发送 empty : " << next_abs_seqno_ << endl;
+  // cout << "要发送 empty : " << next_abs_seqno_ << endl;
   Wrap32 seqno = isn_ + next_abs_seqno_;
   return { seqno, false, {}, false };
 }
@@ -114,10 +118,6 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
   if ( msg.ackno ) {
     cur_RTO_ms_ = initial_RTO_ms_; // 重置RTO
     consecutive_retrans_cnt_ = 0;  // 重置连续重传计数器
-    if ( msg.ackno == isn_ )
-      connected_ = true; // 建立TCP连接
-    if ( fin_ack_ && msg.ackno == fin_ack_.value() )
-      connected_ = false;                      // 关闭TCP连接
     while ( !outstanding_segments_.empty() ) { // 移除buffer中已经被确认的segments
       const auto& front = outstanding_segments_.front();
       const uint64_t front_abs_seqno = front.seqno.unwrap( isn_, next_abs_seqno_ );

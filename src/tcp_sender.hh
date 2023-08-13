@@ -33,11 +33,12 @@ class TCPSender
 {
 private:
   Wrap32 isn_;
-  std::optional<Wrap32> fin_ack_;
   uint64_t initial_RTO_ms_;
   uint64_t cur_RTO_ms_;
+  
   bool retransmit_;
-  bool connected_;
+  bool syn_send_;  // send syn
+  bool fin_send_;  // send fin 
 
   uint64_t next_abs_seqno_; // 发送的/下一个序列号数
   uint16_t window_size_;  // （原始）接收窗口大小
