@@ -15,7 +15,6 @@ private:
   bool is_running_ = false; // 运行状态
   bool is_expired_ = false; // 过期状态
 
-  inline void set_expired();
   inline void reset();
 
 public:
@@ -38,14 +37,13 @@ private:
   uint64_t cur_RTO_ms_;
   
   uint64_t next_abs_seqno_; // 发送的/下一个序列号数
-  Wrap32 last_ackno_;       // 最后接收到的ack序号
-  uint16_t window_size_;   // 窗口大小  
-  uint16_t cur_window_size_; // 当前窗口大小
+  uint16_t send_window_size_;   // 发送窗口大小  
   uint64_t consecutive_retrans_cnt_;  // 连续重传次数
   
   Timer retrans_timer_;
-  std::queue<TCPSenderMessage> send_segments_;  // 要发送的TCP段队列
-  std::queue<TCPSenderMessage> track_segments_; // 追踪已经发出但未被确认的tcp段
+  std::queue<TCPSenderMessage> segments_to_send_;  // 要发送的TCP段队列
+  std::queue<TCPSenderMessage> outstanding_segments_; // 追踪已经发出但未被确认的tcp段
+  uint16_t outstanding_seq_cnt_;  // 追踪还未确认的序号数
 
   
 public:

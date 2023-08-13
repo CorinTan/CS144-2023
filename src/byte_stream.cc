@@ -79,6 +79,8 @@ uint64_t Writer::bytes_pushed() const
   return total_pushed_;
 }
 
+/* Reader : */
+
 string_view Reader::peek() const
 {
   if ( pipe_view_.empty() ) {
@@ -86,8 +88,6 @@ string_view Reader::peek() const
   }
   return pipe_view_.front();
 }
-
-/* Reader : */
 
 bool Reader::is_finished() const
 {
