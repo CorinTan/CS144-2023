@@ -18,6 +18,7 @@ TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
   , fin_send_( false )
 
   , next_abs_seqno_( 0 )
+  , last_ackno_()
   , window_size_( 1 )
   , send_window_size_( window_size_ )
   , consecutive_retrans_cnt_( 0 )
@@ -51,10 +52,10 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
   if ( seg_maybe_send ) {
     if ( !retrans_timer_.is_running() )
       retrans_timer_.start( cur_RTO_ms_ );
-    /* cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
+    cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
          << " SYN=" << seg_maybe_send.value().SYN << " FIN=" << seg_maybe_send.value().FIN
          << " payload_size=" << seg_maybe_send.value().payload.length()
-         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl; */
+         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl;
   }
   return seg_maybe_send;
 }
@@ -87,7 +88,7 @@ void TCPSender::push( Reader& outbound_stream )
   if ( seg_to_send.sequence_length() && seg_to_send.sequence_length() <= send_window_size_ ) {
     if ( seg_to_send.SYN )
       syn_send_ = true;
-    if (seg_to_send.FIN)
+    if ( seg_to_send.FIN )
       fin_send_ = true;
     seg_to_send.seqno = isn_ + next_abs_seqno_;
     send_window_size_ -= seg_to_send.sequence_length();
@@ -110,14 +111,21 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 {
   if ( msg.ackno ) {
     const uint64_t abs_ackno = msg.ackno.value().unwrap( isn_, next_abs_seqno_ );
-    if ( abs_ackno > next_abs_seqno_ )
-      return; // 非法ack
+    const uint64_t abs_last_ackno = last_ackno_ ? last_ackno_.value().unwrap( isn_, next_abs_seqno_ ) : 0;
+    if ( abs_ackno > next_abs_seqno_ || abs_ackno < abs_last_ackno )
+      return; // 无效ack
   }
+
+  // 更新窗口信息
   window_size_ = msg.window_size;
   send_window_size_ = window_size_ ? window_size_ : 1;
+
   if ( msg.ackno ) {
-    cur_RTO_ms_ = initial_RTO_ms_; // 重置RTO
-    consecutive_retrans_cnt_ = 0;  // 重置连续重传计数器
+    if ( last_ackno_ == msg.ackno )
+      return;
+    last_ackno_ = msg.ackno.value();           // 更新ackno
+    cur_RTO_ms_ = initial_RTO_ms_;             // 重置RTO
+    consecutive_retrans_cnt_ = 0;              // 重置连续重传计数器
     while ( !outstanding_segments_.empty() ) { // 移除buffer中已经被确认的segments
       const auto& front = outstanding_segments_.front();
       const uint64_t front_abs_seqno = front.seqno.unwrap( isn_, next_abs_seqno_ );
