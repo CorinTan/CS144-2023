@@ -19,6 +19,7 @@ TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
 
   , next_abs_seqno_( 0 )
   , last_ackno_()
+  , last_seqno_()
   , window_size_( 1 )
   , send_window_size_( window_size_ )
   , consecutive_retrans_cnt_( 0 )
@@ -52,10 +53,11 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
   if ( seg_maybe_send ) {
     if ( !retrans_timer_.is_running() )
       retrans_timer_.start( cur_RTO_ms_ );
-    cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
+   /*  cout << "要发送 seq=" << seg_maybe_send.value().seqno.unwrap( isn_, next_abs_seqno_ )
          << " SYN=" << seg_maybe_send.value().SYN << " FIN=" << seg_maybe_send.value().FIN
          << " payload_size=" << seg_maybe_send.value().payload.length()
-         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl;
+         << " segment_size=" << seg_maybe_send.value().sequence_length() << endl; */
+    last_seqno_ = seg_maybe_send.value().seqno + seg_maybe_send.value().sequence_length(); 
   }
   return seg_maybe_send;
 }
@@ -63,14 +65,15 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 void TCPSender::push( Reader& outbound_stream )
 {
   TCPSenderMessage seg_to_send;
-  seg_to_send.SYN = !syn_send_;                                  // 发送TCP建立请求
-  // seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取前已关闭
+  seg_to_send.SYN = !syn_send_; // 发送TCP建立请求
   uint64_t need_bytes;
-  if ( seg_to_send.SYN || seg_to_send.FIN )
+  if ( seg_to_send.SYN )
     need_bytes = 0;
   else
     need_bytes = TCPConfig::MAX_PAYLOAD_SIZE < send_window_size_ ? TCPConfig::MAX_PAYLOAD_SIZE : send_window_size_;
-
+  
+  if (send_window_size_ == 2)
+    cout << "send_window_size_: " << send_window_size_ << endl;
   while ( true ) {
     string payload;
     // 从 outbound_stream 读取相应字节流 : 填满窗口或者无法读到数据（已经发送完或者暂时没有数据可读）
@@ -82,10 +85,10 @@ void TCPSender::push( Reader& outbound_stream )
       payload += next.substr( 0, bytes_to_pop );
       outbound_stream.pop( bytes_to_pop );
     }
-    // 封装TCP段，插入发送队列
-    if (!seg_to_send.FIN && seg_to_send.sequence_length() < send_window_size_) 
-      seg_to_send.FIN = !fin_send_ && outbound_stream.is_finished(); // 读取后关闭
     seg_to_send.payload = payload;
+    // 封装TCP段，插入发送队列
+    if ( !fin_send_ && seg_to_send.sequence_length() < send_window_size_ )
+      seg_to_send.FIN = outbound_stream.is_finished(); // 读取后关闭
     if ( seg_to_send.sequence_length() && seg_to_send.sequence_length() <= send_window_size_ ) {
       if ( seg_to_send.SYN )
         syn_send_ = true;
@@ -118,14 +121,15 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
     const uint64_t abs_last_ackno = last_ackno_ ? last_ackno_.value().unwrap( isn_, next_abs_seqno_ ) : 0;
     if ( abs_ackno > next_abs_seqno_ || abs_ackno < abs_last_ackno )
       return; // 无效ack
+    if (abs_ackno == next_abs_seqno_ || abs_ackno == abs_last_ackno)
   }
 
   // 更新窗口信息
   window_size_ = msg.window_size;
   send_window_size_ = window_size_ ? window_size_ : 1;
-
+  cout << "收到ACK,更新窗口为: " << send_window_size_ << endl;
   if ( msg.ackno ) {
-    if ( last_ackno_ == msg.ackno )
+    if ( last_ackno_ == msg.ackno ) 
       return;
     last_ackno_ = msg.ackno.value();           // 更新ackno
     cur_RTO_ms_ = initial_RTO_ms_;             // 重置RTO

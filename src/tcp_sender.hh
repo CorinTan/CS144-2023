@@ -42,6 +42,7 @@ private:
 
   uint64_t next_abs_seqno_; // 发送的/下一个序列号数
   std::optional<Wrap32> last_ackno_;  // 上次的ackno
+  std::optional<Wrap32> last_seqno_;  // 上次的seqno 
   uint16_t window_size_;  // （原始）接收窗口大小
   uint16_t send_window_size_;   // 发送窗口大小  
   uint64_t consecutive_retrans_cnt_;  // 连续重传次数
