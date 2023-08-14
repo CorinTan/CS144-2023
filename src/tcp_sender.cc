@@ -133,8 +133,8 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
   }
 
   // 有效ack, 更新窗口信息
-  window_size_ = msg.window_size;
-  send_window_size_ = window_size_ ? window_size_ : 1;
+  window_size_ = msg.window_size ? msg.window_size : 1;
+  send_window_size_ = window_size_;
   cout << "收到ACK,更新窗口为: " << send_window_size_ << endl;
 
   if ( msg.ackno ) {
