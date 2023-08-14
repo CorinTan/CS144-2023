@@ -39,7 +39,8 @@ private:
   bool retransmit_;
   bool syn_send_;  // send syn
   bool fin_send_;  // send fin 
-
+  bool feak_window_; // fake window_size : 1
+  
   uint64_t next_abs_seqno_; // 发送的/下一个序列号数
   std::optional<Wrap32> last_ackno_;  // 上次的ackno
   uint16_t window_size_;  // （原始）接收窗口大小

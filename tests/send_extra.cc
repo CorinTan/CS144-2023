@@ -252,7 +252,6 @@ int main()
 
       TCPSenderTestHarness test { "Don't add FIN if this would make the segment exceed the receiver's window",
                                   cfg };
-      cout << "----debug-----" << endl;
       test.execute( Push {} );
       test.execute( ExpectMessage {}.with_no_flags().with_syn( true ).with_payload_size( 0 ).with_seqno( isn ) );
       test.execute( Push( "abc" ).with_close() );
@@ -261,10 +260,8 @@ int main()
         ExpectMessage {}.with_payload_size( 3 ).with_data( "abc" ).with_seqno( isn + 1 ).with_no_flags() );
       test.execute( ExpectSeqno { isn + 4 } );
       test.execute( ExpectSeqnosInFlight { 3 } );
-      cout << "调用 ACK "<< endl;
       test.execute( AckReceived { Wrap32 { isn + 2 } }.with_win( 2 ) );
       test.execute( ExpectNoSegment {} );
-      cout << "调用 ACK "<< endl;
       test.execute( AckReceived { Wrap32 { isn + 3 } }.with_win( 1 ) );
       test.execute( ExpectNoSegment {} );
       test.execute( AckReceived { Wrap32 { isn + 4 } }.with_win( 1 ) );
