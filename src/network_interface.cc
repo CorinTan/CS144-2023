@@ -1,14 +1,14 @@
 #include "network_interface.hh"
 
 #include "arp_message.hh"
-#include "frame_ip.hh"
+#include "ethernet_frame.hh"
 
 using namespace std;
 
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface
 // ip_address: IP (what ARP calls "protocol") address of the interface
 NetworkInterface::NetworkInterface( const EthernetAddress& ethernet_address, const Address& ip_address )
-  : ethernet_address_( ethernet_address ), ip_address_( ip_address ), frame_to_send_(), ip_mac()
+  : ethernet_address_( ethernet_address ), ip_address_( ip_address ), ip_to_send_(), arp_to_send_(), ip_mac()
 {
   cerr << "DEBUG: Network interface has Ethernet address " << to_string( ethernet_address_ ) << " and IP address "
        << ip_address.ip() << "\n";
