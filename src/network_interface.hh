@@ -54,8 +54,8 @@ private:
 
   void updateMappingTime(const size_t ms_since_last_tick);
   void updateArpTime(const size_t ms_since_last_tick);
-  void requestARP(uint32_t dst_ip);
-
+  void broadcastARP(uint32_t dst_ip);
+  void updateARPTable(const uint32_t &ip, const EthernetAddress &mac);
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
   // addresses
