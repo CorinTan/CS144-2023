@@ -41,6 +41,16 @@ private:
   // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
 
+  // queue of Ethernet frames awaiting transmission
+  std::queue<EthernetFrame> ip_to_send_;  // Time limited
+
+  // queue of ARP messages
+  std::queue<EthernetFrame> arp_to_send_;  // Time limited
+
+  // mapping from ip_address to ethernet_address.
+  std::unordered_map<uint32_t, EthernetAddress> ip_mac;  // Regenerate after 30s 
+
+
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
   // addresses
