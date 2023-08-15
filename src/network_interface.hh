@@ -45,10 +45,16 @@ private:
   std::queue<EthernetFrame> ip_to_send_;  // Time limited
 
   // queue of ARP messages
-  std::queue<EthernetFrame> arp_to_send_;  // Time limited
+  std::queue<EthernetFrame> arp_to_send_;
+  std::unordered_map<uint32_t, size_t> arp_time;  // record the time of arp message send less than 5000ms
 
   // mapping from ip_address to ethernet_address.
   std::unordered_map<uint32_t, EthernetAddress> ip_mac;  // Regenerate after 30s 
+  std::unordered_map<uint32_t, size_t> ip_time; // record ip_mac life time
+
+  void updateMappingTime(const size_t ms_since_last_tick);
+  void updateArpTime(const size_t ms_since_last_tick);
+  void requestARP(uint32_t dst_ip);
 
 
 public:
