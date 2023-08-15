@@ -8,7 +8,14 @@ using namespace std;
 // ethernet_address: Ethernet (what ARP calls "hardware") address of the interface
 // ip_address: IP (what ARP calls "protocol") address of the interface
 NetworkInterface::NetworkInterface( const EthernetAddress& ethernet_address, const Address& ip_address )
-  : ethernet_address_( ethernet_address ), ip_address_( ip_address ), ip_to_send_(), arp_to_send_(), arp_time(), ip_mac(), ip_time()
+  : ethernet_address_( ethernet_address )
+  , ip_address_( ip_address )
+  , ip_to_send_()
+  , frame_to_fill_()
+  , arp_to_send_()
+  , arp_time()
+  , ip_mac()
+  , ip_time()
 {
   cerr << "DEBUG: Network interface has Ethernet address " << to_string( ethernet_address_ ) << " and IP address "
        << ip_address.ip() << "\n";
@@ -24,7 +31,12 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 {
   const uint32_t& next_ip = next_hop.ipv4_numeric();
   if ( ip_mac.find( next_ip ) == ip_mac.end() ) {
-    requestARP(next_ip);
+    requestARP( next_ip );
+    EthernetFrame need_be_filled;
+    need_be_filled.payload = serialize( dgram );
+    need_be_filled.header.src = ethernet_address_;
+    need_be_filled.header.type = EthernetHeader::TYPE_IPv4;
+    frame_to_fill_.push( need_be_filled );
     return;
   }
 
@@ -52,12 +64,16 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
     // update ip_mac address & ip_time table
     if ( ip_mac.find( arp_msg.sender_ip_address ) == ip_mac.end() ) {
       ip_mac.insert( { arp_msg.sender_ip_address, arp_msg.sender_ethernet_address } );
-      ip_time.insert({arp_msg.sender_ip_address, 0});
-    }else {
+      ip_time.insert( { arp_msg.sender_ip_address, 0 } );
+      auto frame_valid = frame_to_fill_.front();
+      frame_valid.header.dst = arp_msg.sender_ethernet_address;
+      ip_to_send_.push( frame_valid );
+      frame_to_fill_.pop();
+    } else {
       ip_mac[arp_msg.sender_ip_address] = arp_msg.sender_ethernet_address;
       ip_time[arp_msg.sender_ip_address] = 0;
     }
-    
+
     // 回应arp_request信息
     if ( arp_msg.opcode == ARPMessage::OPCODE_REQUEST ) {
       ARPMessage arp_reply;
@@ -82,14 +98,14 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
     if ( parse( ip_datagram, frame.payload ) )
       return ip_datagram;
   }
-  return {}; // 不发送IP数据报 
+  return {}; // 不发送IP数据报
 }
 
 // ms_since_last_tick: the number of milliseconds since the last call to this method
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
-  updateMappingTime(ms_since_last_tick);
-  updateArpTime(ms_since_last_tick);
+  updateMappingTime( ms_since_last_tick );
+  updateArpTime( ms_since_last_tick );
 }
 
 optional<EthernetFrame> NetworkInterface::maybe_send()
@@ -97,11 +113,11 @@ optional<EthernetFrame> NetworkInterface::maybe_send()
   optional<EthernetFrame> maybe_send;
   if ( !arp_to_send_.empty() ) {
     maybe_send = arp_to_send_.front();
-    arp_to_send_.pop();  // lab不用考虑收不到的情况
+    arp_to_send_.pop(); // lab不用考虑收不到的情况
     InternetDatagram send_ip;
-    if (parse(send_ip, maybe_send.value().payload)) {
+    if ( parse( send_ip, maybe_send.value().payload ) ) {
       const uint32_t ip_addr = send_ip.header.dst;
-      if (ip_time.find(ip_addr) != ip_time.end()) {
+      if ( ip_time.find( ip_addr ) != ip_time.end() ) {
         arp_to_send_.pop(); // 不发送,重发间隔未超过5s
         maybe_send = nullopt;
       }
@@ -113,36 +129,36 @@ optional<EthernetFrame> NetworkInterface::maybe_send()
   return maybe_send;
 }
 
-void NetworkInterface::updateMappingTime(const size_t ms_since_last_tick) 
+void NetworkInterface::updateMappingTime( const size_t ms_since_last_tick )
 {
-  // update mapping table 
+  // update mapping table
   vector<uint32_t> del_ips;
-  del_ips.reserve(ip_mac.size());
-  for (auto &[ip, time] : ip_time) {
+  del_ips.reserve( ip_mac.size() );
+  for ( auto& [ip, time] : ip_time ) {
     time += ms_since_last_tick;
-    if (time > 30000) 
-      del_ips.push_back(ip);
+    if ( time > 30000 )
+      del_ips.push_back( ip );
   }
-  for (const auto del_ip : del_ips) {
-    ip_mac.erase(del_ip);
-    ip_time.erase(del_ip);
+  for ( const auto del_ip : del_ips ) {
+    ip_mac.erase( del_ip );
+    ip_time.erase( del_ip );
   }
 }
 
-void NetworkInterface::updateArpTime(const size_t ms_since_last_tick) 
+void NetworkInterface::updateArpTime( const size_t ms_since_last_tick )
 {
   vector<uint32_t> dels;
-  dels.reserve(arp_time.size());
-  for (auto &[ip, time] : arp_time) {
+  dels.reserve( arp_time.size() );
+  for ( auto& [ip, time] : arp_time ) {
     time += ms_since_last_tick;
-    if (time > 5000)
-      dels.push_back(ip);
+    if ( time > 5000 )
+      dels.push_back( ip );
   }
-  for (const auto del : dels)
-    ip_time.erase(del);
+  for ( const auto del : dels )
+    ip_time.erase( del );
 }
 
-void NetworkInterface::requestARP(uint32_t dst_ip)
+void NetworkInterface::requestARP( uint32_t dst_ip )
 {
   // 广播ARP request
   ARPMessage broadcast_arp;

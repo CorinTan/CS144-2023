@@ -41,9 +41,9 @@ private:
   // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
 
-  // queue of Ethernet frames awaiting transmission
-  std::queue<EthernetFrame> ip_to_send_;  // Time limited
-
+  // queue of Ethernet frames need to fill dst ethernet address
+  std::queue<EthernetFrame> ip_to_send_; 
+  std::queue<EthernetFrame> frame_to_fill_;
   // queue of ARP messages
   std::queue<EthernetFrame> arp_to_send_;
   std::unordered_map<uint32_t, size_t> arp_time;  // record the time of arp message send less than 5000ms
@@ -55,7 +55,6 @@ private:
   void updateMappingTime(const size_t ms_since_last_tick);
   void updateArpTime(const size_t ms_since_last_tick);
   void requestARP(uint32_t dst_ip);
-
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
