@@ -66,7 +66,7 @@ private:
   // The router's collection of network interfaces
   std::vector<AsyncNetworkInterface> interfaces_ {};
   // route_table
-  std::vector<RouteItem> route_table;
+  std::vector<RouteItem> route_table {};
   // Longest_prefix_match
   std::optional<RouteItem> longest_prefix_match( const uint32_t ip ); // return interface index
 
