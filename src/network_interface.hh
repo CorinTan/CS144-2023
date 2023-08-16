@@ -41,15 +41,13 @@ private:
   // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
 
-  // queue of Ethernet frames need to fill dst ethernet address
-  std::queue<EthernetFrame> ip_to_send_; 
-  std::queue<EthernetFrame> frame_to_fill_;
-  // queue of ARP messages
-  std::queue<EthernetFrame> arp_to_send_;
+  std::queue<EthernetFrame> ip_to_send_;   // next to send 
+  std::queue<EthernetFrame> frame_to_fill_; // queue of Ethernet frames need to fill dst ethernet address
+  
+  std::queue<EthernetFrame> arp_to_send_;  // queue of ARP messages
   std::unordered_map<uint32_t, size_t> arp_time;  // record the time of arp message send less than 5000ms
 
-  // mapping from ip_address to ethernet_address.
-  std::unordered_map<uint32_t, EthernetAddress> ip_mac;  // Regenerate after 30s 
+  std::unordered_map<uint32_t, EthernetAddress> ip_mac;  // mapping from ip_address to ethernet_address, Regenerate after 30s 
   std::unordered_map<uint32_t, size_t> ip_time; // record ip_mac life time
 
   void updateMappingTime(const size_t ms_since_last_tick);
