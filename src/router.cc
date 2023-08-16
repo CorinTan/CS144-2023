@@ -32,8 +32,8 @@ void Router::route()
       uint32_t ip = recved_ipdatagram.value().header.dst;
       optional<RouteItem> route_item = longest_prefix_match( ip );
       auto& ttl = recved_ipdatagram.value().header.ttl;
-      if ( !route_item.has_value() || ttl < 2 )
-        return; // 匹配失败直接丢弃
+      if (!route_item.has_value() ||  ttl < 2 )
+        return; // 匹配失败或者 ttl=1或0 直接丢弃
 
       // 修改TTL，更新checksum, 发送
       ttl -= 1;
@@ -54,9 +54,13 @@ optional<RouteItem> Router::longest_prefix_match( const uint32_t ip )
 {
   uint8_t last_length = 0;
   optional<RouteItem> longest_item;
+  optional<RouteItem> default_route;
   for ( const auto& item : route_table ) {
-    if ( item.prefix_length == 0 ) // 默认路由: 0.0.0.0/0
+    if ( item.route_prefix == 0 && item.prefix_length == 0 ) {
+      // 默认路由: 0.0.0.0/0
+      default_route = item;
       continue;
+    }
     uint32_t mask = -1 << ( 32 - item.prefix_length );
     bool check = !( ( ip & mask ) ^ item.route_prefix );
     if ( check && item.prefix_length > last_length ) {
@@ -64,5 +68,5 @@ optional<RouteItem> Router::longest_prefix_match( const uint32_t ip )
       longest_item = item;
     }
   }
-  return longest_item;
+  return longest_item.has_value() ? longest_item : default_route;
 }
