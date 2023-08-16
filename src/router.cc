@@ -55,6 +55,8 @@ optional<RouteItem> Router::longest_prefix_match( const uint32_t ip )
   uint8_t last_length = 0;
   optional<RouteItem> longest_item;
   for ( const auto& item : route_table ) {
+    if ( item.prefix_length == 0 ) // 默认路由: 0.0.0.0/0
+      continue;
     uint32_t mask = -1 << ( 32 - item.prefix_length );
     bool check = !( ( ip & mask ) ^ item.route_prefix );
     if ( check && item.prefix_length > last_length ) {
