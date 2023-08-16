@@ -4,7 +4,9 @@
 
 #include <optional>
 #include <queue>
-
+#include <unordered_map>
+#include <utility>
+#include <vector>
 // A wrapper for NetworkInterface that makes the host-side
 // interface asynchronous: instead of returning received datagrams
 // immediately (from the `recv_frame` method), it stores them for
@@ -52,8 +54,20 @@ public:
 // performs longest-prefix-match routing between them.
 class Router
 {
+private:
+  struct RouteItem {
+    uint32_t route_prefix;
+    uint8_t prefix_length;
+    std::optional<Address> next_hop;
+    size_t interface_num;
+  };
+  
   // The router's collection of network interfaces
   std::vector<AsyncNetworkInterface> interfaces_ {};
+  // route_table
+  std::vector<RouteItem> route_table;
+  // Longest_prefix_match
+  std::optional<RouteItem &> longest_prefix_match(uint32_t ip); // return interface index
 
 public:
   // Add an interface to the router
