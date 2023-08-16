@@ -30,22 +30,37 @@ void Router::route()
     optional<InternetDatagram> recved_ipdatagram = inf.maybe_receive();
     if ( recved_ipdatagram.has_value() ) {
       uint32_t ip = recved_ipdatagram.value().header.dst;
-      optional<RouteItem &> route_item = longest_prefix_match(ip);
-      auto &ttl = recved_ipdatagram.value().header.ttl;
-      if (!route_item.has_value() || ttl < 2)
-        return ; // 匹配失败直接丢弃
-      
+      optional<RouteItem> route_item = longest_prefix_match( ip );
+      auto& ttl = recved_ipdatagram.value().header.ttl;
+      if ( !route_item.has_value() || ttl < 2 )
+        return; // 匹配失败直接丢弃
+
       // 修改TTL，更新checksum, 发送
       ttl -= 1;
-      recved_ipdatagram.value().header.compute_checksum(); 
-      auto &target_interface = interface(route_item.value().interface_num);
-      if (route_item.value().next_hop.has_value())
-        target_interface.send_datagram(recved_ipdatagram.value(), route_item.value().next_hop.value());
+      recved_ipdatagram.value().header.compute_checksum();
+      auto& target_interface = interface( route_item.value().interface_num );
+      if ( route_item.value().next_hop.has_value() )
+        target_interface.send_datagram( recved_ipdatagram.value(), route_item.value().next_hop.value() );
       else {
         // next_hop为空，应该直接发送目标ip
-        Address target_ip = Address::from_ipv4_numeric(recved_ipdatagram.value().header.dst);
-        target_interface.send_datagram(recved_ipdatagram.value(), target_ip); 
+        Address target_ip = Address::from_ipv4_numeric( recved_ipdatagram.value().header.dst );
+        target_interface.send_datagram( recved_ipdatagram.value(), target_ip );
       }
     }
   }
+}
+
+optional<RouteItem> Router::longest_prefix_match( const uint32_t ip )
+{
+  uint8_t last_length = 0;
+  optional<RouteItem> longest_item;
+  for ( const auto& item : route_table ) {
+    uint32_t mask = -1 << ( 32 - item.prefix_length );
+    bool check = !( ( ip & mask ) ^ item.route_prefix );
+    if ( check && item.prefix_length > last_length ) {
+      last_length = item.prefix_length;
+      longest_item = item;
+    }
+  }
+  return longest_item;
 }
