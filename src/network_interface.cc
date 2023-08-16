@@ -117,8 +117,8 @@ optional<EthernetFrame> NetworkInterface::maybe_send()
     maybe_send = arp_to_send_.front();
     arp_to_send_.pop(); // lab不用考虑收不到的情况
     ARPMessage arp_msg;
-    parse(arp_msg, maybe_send.value().payload);
-    arp_time.insert({arp_msg.target_ip_address, 0});
+    parse( arp_msg, maybe_send.value().payload );
+    arp_time.insert( { arp_msg.target_ip_address, 0 } );
   } else if ( !ip_to_send_.empty() ) {
     maybe_send = ip_to_send_.front();
     ip_to_send_.pop();
@@ -126,7 +126,7 @@ optional<EthernetFrame> NetworkInterface::maybe_send()
   if ( maybe_send )
     cout << "发送:" << maybe_send.value().header.to_string() << endl;
   else
-    cout << "发送空帧" << endl; 
+    cout << "发送空帧" << endl;
   return maybe_send;
 }
 
@@ -134,31 +134,28 @@ void NetworkInterface::updateMappingTime( const size_t ms_since_last_tick )
 {
   cout << "call updateMappingTime" << endl;
   // update mapping table
-  vector<uint32_t> del_ips;
-  del_ips.reserve( ip_mac.size() );
-  for ( auto& [ip, time] : ip_time ) {
-    time += ms_since_last_tick;
-    if ( time >= 30000 )
-      del_ips.push_back( ip );
-  }
-  for ( const auto del_ip : del_ips ) {
-    ip_mac.erase( del_ip );
-    ip_time.erase( del_ip );
+  auto it = ip_time.begin();
+  while ( it != ip_time.end() ) {
+    it->second += ms_since_last_tick;
+    if ( it->second >= 30000 ) {
+      ip_mac.erase( it->first );
+      it = ip_time.erase( it );
+    } else
+      ++it;
   }
 }
 
 void NetworkInterface::updateArpTime( const size_t ms_since_last_tick )
 {
   cout << "call updateArpTime" << endl;
-  vector<uint32_t> dels;
-  dels.reserve( arp_time.size() );
-  for ( auto& [ip, time] : arp_time ) {
-    time += ms_since_last_tick;
-    if ( time >= 5000 )
-      dels.push_back( ip );
+  auto it = arp_time.begin();
+  while ( it != arp_time.end() ) {
+    it->second += ms_since_last_tick;
+    if ( it->second >= 5000 )
+      it = arp_time.erase( it );
+    else
+      ++it;
   }
-  for ( const auto del : dels )
-    arp_time.erase( del );
 }
 
 void NetworkInterface::broadcastARP( uint32_t dst_ip )
@@ -184,8 +181,11 @@ void NetworkInterface::broadcastARP( uint32_t dst_ip )
 void NetworkInterface::updateARPTable( const uint32_t& ip, const EthernetAddress& mac )
 {
   // update ip_mac address
-  if ( ip_mac.find( ip ) == ip_mac.end() )
+  if ( ip_mac.find( ip ) == ip_mac.end() ) {
     ip_mac.insert( { ip, mac } );
-  else
+    ip_time.insert( { ip, 0 } );
+  } else {
     ip_mac[ip] = mac;
+    ip_time[ip] = 0;
+  }
 }
