@@ -36,7 +36,7 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
     need_be_filled.header.src = ethernet_address_;
     need_be_filled.header.type = EthernetHeader::TYPE_IPv4;
     need_be_filled.payload = serialize( dgram );
-    frame_to_fill_.push( std::move(need_be_filled ));
+    frame_to_fill_.push( std::move( need_be_filled ) );
     return;
   }
   // encasulate to frame_ip
@@ -45,7 +45,7 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
   frame_ip.header.dst = ip_mac[next_ip];
   frame_ip.header.type = EthernetHeader::TYPE_IPv4;
   frame_ip.payload = serialize( dgram );
-  ip_to_send_.push( std::move(frame_ip ));
+  ip_to_send_.push( std::move( frame_ip ) );
 }
 
 // frame: the incoming Ethernet frame
@@ -85,12 +85,12 @@ optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& fr
       frame_arp_reply.header.src = arp_reply.sender_ethernet_address;
       frame_arp_reply.header.type = EthernetHeader::TYPE_ARP;
       frame_arp_reply.payload = serialize( arp_reply );
-      arp_to_send_.push( std::move(frame_arp_reply ));
+      arp_to_send_.push( std::move( frame_arp_reply ) );
     } else if ( arp_msg.opcode == ARPMessage::OPCODE_REPLY ) {
       // 填充发出arp请求的mac帧
       auto frame_valid = frame_to_fill_.front();
       frame_valid.header.dst = arp_msg.sender_ethernet_address;
-      ip_to_send_.push( std::move(frame_valid ));
+      ip_to_send_.push( std::move( frame_valid ) );
       frame_to_fill_.pop();
     }
   }
@@ -160,7 +160,7 @@ void NetworkInterface::broadcastARP( uint32_t dst_ip )
   frame_arp.header.dst = ETHERNET_BROADCAST;
   frame_arp.header.type = EthernetHeader::TYPE_ARP;
   frame_arp.payload = serialize( broadcast_arp );
-  arp_to_send_.push( std::move(frame_arp ));
+  arp_to_send_.push( std::move( frame_arp ) );
 }
 
 void NetworkInterface::updateARPTable( const uint32_t& ip, const EthernetAddress& mac )

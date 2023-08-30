@@ -35,18 +35,18 @@ public:
   uint64_t bytes_pending() const;
 
 private:
-  std::unordered_map<uint64_t, std::pair<std::string, bool> > buffer_data = {};
+  std::unordered_map<uint64_t, std::pair<std::string, bool>> buffer_data = {};
   std::list<std::pair<uint64_t, uint64_t>> buffer_domains = {};
 
   uint64_t total_bytes_pending = 0;
-  uint64_t lower_bound = 0;  // next_need_index
-  uint64_t upper_bound = 0;  // [low_bound, upper_bound)
+  uint64_t lower_bound = 0; // next_need_index
+  uint64_t upper_bound = 0; // [low_bound, upper_bound)
 
-  bool outOfBound( const uint64_t first_index, const std::string &data);
-  bool sendNow(  const uint64_t first_index, std::string &data);
+  bool outOfBound( const uint64_t first_index, const std::string& data );
+  bool sendNow( const uint64_t first_index, std::string& data );
   void popValidDomains( Writer& output ); // 检查buffer中是否存在可发送的数据，存在则都发送
-  void insertBuffer( uint64_t first_index, std::string &data, bool is_last_substring);
+  void insertBuffer( uint64_t first_index, std::string& data, bool is_last_substring );
   void mergerBuffer();
-  inline void updateBounds(Writer &output);
-  inline void pushToWriter(const std::string &data, Writer &output, const bool last);
+  inline void updateBounds( Writer& output );
+  inline void pushToWriter( const std::string& data, Writer& output, const bool last );
 };

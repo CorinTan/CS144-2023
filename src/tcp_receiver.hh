@@ -1,14 +1,15 @@
 #pragma once
-#include <optional>
 #include "reassembler.hh"
 #include "tcp_receiver_message.hh"
 #include "tcp_sender_message.hh"
+#include <optional>
 
 class TCPReceiver
 {
 private:
   std::optional<Wrap32> isn = {};
-  inline uint16_t u64ToU16(uint64_t num_64) const;
+  inline uint16_t u64ToU16( uint64_t num_64 ) const;
+
 public:
   /*
    * The TCPReceiver receives TCPSenderMessages, inserting their payload into the Reassembler

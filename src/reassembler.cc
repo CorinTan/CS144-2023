@@ -70,8 +70,8 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
   if ( buffer_domains.empty() ) {
     // cout << "buffer is empty." << endl;
     // 检查要放入buffer的字节是否超出
-    if (first_index + data.length() > upper_bound) {
-      data = data.substr(0, first_index + data.length() - upper_bound);
+    if ( first_index + data.length() > upper_bound ) {
+      data = data.substr( 0, first_index + data.length() - upper_bound );
       end = upper_bound;
     }
     total_bytes_pending += data.length();
@@ -105,41 +105,39 @@ void Reassembler::insertBuffer( uint64_t first_index, string& data, bool is_last
   if ( it == buffer_domains.end() ) {
     it = buffer_domains.insert( it, { start, end } );
     total_bytes_pending += data.length();
-    buffer_data.insert( { start, { std::move(data), is_last_substring } } );
+    buffer_data.insert( { start, { std::move( data ), is_last_substring } } );
   }
   mergerBuffer();
 }
 
 void Reassembler::mergerBuffer()
 {
-  if (buffer_domains.empty())
-    return ;
+  if ( buffer_domains.empty() )
+    return;
   auto p = buffer_domains.begin();
   auto post = p;
   ++post;
-  while (post != buffer_domains.end()) {
-    if ( p->second >= post->second) {
+  while ( post != buffer_domains.end() ) {
+    if ( p->second >= post->second ) {
       // 包含，删除post
-      buffer_data.erase(post->first);
+      buffer_data.erase( post->first );
       total_bytes_pending -= post->second - post->first;
-      post = buffer_domains.erase(post); // 删除并移动
-    }
-    else if (p->second >= post->first && p->second < post->second) {
+      post = buffer_domains.erase( post ); // 删除并移动
+    } else if ( p->second >= post->first && p->second < post->second ) {
       // 交错
-      string new_data = std::move(buffer_data[p->first].first);
-      string joint_data = std::move(buffer_data[post->first].first);
+      string new_data = std::move( buffer_data[p->first].first );
+      string joint_data = std::move( buffer_data[post->first].first );
       total_bytes_pending -= p->second - post->first;
-      joint_data = joint_data.substr(p->second-post->first);
+      joint_data = joint_data.substr( p->second - post->first );
       new_data += joint_data;
       // 更新map
-      buffer_data[p->first].first = std::move(new_data);
+      buffer_data[p->first].first = std::move( new_data );
       buffer_data[p->first].second = buffer_data[p->first].second | buffer_data[post->first].second;
-      buffer_data.erase(post->first);
+      buffer_data.erase( post->first );
       // 更新domain
       p->second = post->second;
-      post = buffer_domains.erase(post); // 删除并移动
-    }
-    else
+      post = buffer_domains.erase( post ); // 删除并移动
+    } else
       ++p, ++post;
   }
 }

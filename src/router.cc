@@ -32,7 +32,7 @@ void Router::route()
       uint32_t ip = recved_ipdatagram.value().header.dst;
       optional<RouteItem> route_item = longest_prefix_match( ip );
       auto& ttl = recved_ipdatagram.value().header.ttl;
-      if (!route_item.has_value() ||  ttl < 2 )
+      if ( !route_item.has_value() || ttl < 2 )
         return; // 匹配失败或者 ttl=1或0 直接丢弃
 
       // 修改TTL，更新checksum, 发送

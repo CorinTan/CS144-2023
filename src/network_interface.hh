@@ -41,19 +41,21 @@ private:
   // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
 
-  std::queue<EthernetFrame> ip_to_send_;   // next to send 
+  std::queue<EthernetFrame> ip_to_send_;    // next to send
   std::queue<EthernetFrame> frame_to_fill_; // queue of Ethernet frames need to fill dst ethernet address
-  
-  std::queue<EthernetFrame> arp_to_send_;  // queue of ARP messages
-  std::unordered_map<uint32_t, size_t> arp_time;  // record the time of arp message send less than 5000ms
 
-  std::unordered_map<uint32_t, EthernetAddress> ip_mac;  // mapping from ip_address to ethernet_address, Regenerate after 30s 
+  std::queue<EthernetFrame> arp_to_send_;        // queue of ARP messages
+  std::unordered_map<uint32_t, size_t> arp_time; // record the time of arp message send less than 5000ms
+
+  std::unordered_map<uint32_t, EthernetAddress>
+    ip_mac;                                     // mapping from ip_address to ethernet_address, Regenerate after 30s
   std::unordered_map<uint32_t, size_t> ip_time; // record ip_mac life time
 
-  void updateMappingTime(const size_t ms_since_last_tick);
-  void updateArpTime(const size_t ms_since_last_tick);
-  void broadcastARP(uint32_t dst_ip);
-  void updateARPTable(const uint32_t &ip, const EthernetAddress &mac);
+  void updateMappingTime( const size_t ms_since_last_tick );
+  void updateArpTime( const size_t ms_since_last_tick );
+  void broadcastARP( uint32_t dst_ip );
+  void updateARPTable( const uint32_t& ip, const EthernetAddress& mac );
+
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
   // addresses

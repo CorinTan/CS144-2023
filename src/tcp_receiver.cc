@@ -23,7 +23,8 @@ TCPReceiverMessage TCPReceiver::send( const Writer& inbound_stream ) const
   send_msg.window_size = u64ToU16( inbound_stream.available_capacity() );
   if ( isn ) {
     // 已建立TCP连接
-    const uint64_t abs_seqno = inbound_stream.bytes_pushed() + 1 + inbound_stream.is_closed(); // stream index to abs_seq index
+    const uint64_t abs_seqno
+      = inbound_stream.bytes_pushed() + 1 + inbound_stream.is_closed(); // stream index to abs_seq index
     send_msg.ackno = Wrap32::wrap( abs_seqno, isn.value() );
   }
   return send_msg;
